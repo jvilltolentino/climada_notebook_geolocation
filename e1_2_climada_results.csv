@@ -79,7 +79,7 @@ Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP1-1.9,Medium (3-10yr
 London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP1-1.9,Medium (3-10yr),4.612502057492051e-05
 Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP1-1.9,Medium (3-10yr),0.0
 Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP1-1.9,Medium (3-10yr),0.0
-Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP1-1.9,Long (10+yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP1-1.9,Long (10+yr),0.009686979362018353
 London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP1-1.9,Long (10+yr),4.522828709868053e-05
 Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP1-1.9,Long (10+yr),0.0
 Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP1-1.9,Long (10+yr),0.0
