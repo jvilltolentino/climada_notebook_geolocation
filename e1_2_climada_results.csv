@@ -1,0 +1,109 @@
+site_name,latitude,longitude,country_iso3,headcount,business_area,criticality,hazard,scenario,timeframe,eal
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP1-1.9,Short (0-3yr),5.1440779778910695e-05
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP1-1.9,Short (0-3yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP1-1.9,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP1-1.9,Short (0-3yr),0.0012499999720603228
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP1-1.9,Medium (3-10yr),0.0005146394114907914
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP1-1.9,Medium (3-10yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP1-1.9,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP1-1.9,Medium (3-10yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP1-1.9,Long (10+yr),0.00011524058191534347
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP1-1.9,Long (10+yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP1-1.9,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP1-1.9,Long (10+yr),0.0009999999776482583
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP2-4.5,Short (0-3yr),0.00012845657248557128
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP2-4.5,Short (0-3yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP2-4.5,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP2-4.5,Short (0-3yr),0.0014999999664723873
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP2-4.5,Medium (3-10yr),0.00044107864899961096
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP2-4.5,Medium (3-10yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP2-4.5,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP2-4.5,Medium (3-10yr),0.0014999999664723873
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP2-4.5,Long (10+yr),0.00044922890816754494
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP2-4.5,Long (10+yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP2-4.5,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP2-4.5,Long (10+yr),0.0007499999832361937
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP3-7.0,Short (0-3yr),0.00038251791849625466
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP3-7.0,Short (0-3yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP3-7.0,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP3-7.0,Short (0-3yr),0.00024999999441206456
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP3-7.0,Medium (3-10yr),0.000591734694437103
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP3-7.0,Medium (3-10yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP3-7.0,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP3-7.0,Medium (3-10yr),0.0012499999720603228
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Flooding,SSP3-7.0,Long (10+yr),0.0007997654770951157
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Flooding,SSP3-7.0,Long (10+yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Flooding,SSP3-7.0,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Flooding,SSP3-7.0,Long (10+yr),0.002499999944120646
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP1-1.9,Short (0-3yr),5.1440779778910695e-05
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP1-1.9,Short (0-3yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP1-1.9,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP1-1.9,Short (0-3yr),0.0012499999720603228
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP1-1.9,Medium (3-10yr),0.0005146394114907914
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP1-1.9,Medium (3-10yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP1-1.9,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP1-1.9,Medium (3-10yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP1-1.9,Long (10+yr),0.00011524058191534347
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP1-1.9,Long (10+yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP1-1.9,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP1-1.9,Long (10+yr),0.0009999999776482583
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP2-4.5,Short (0-3yr),0.00012845657248557128
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP2-4.5,Short (0-3yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP2-4.5,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP2-4.5,Short (0-3yr),0.0014999999664723873
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP2-4.5,Medium (3-10yr),0.00044107864899961096
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP2-4.5,Medium (3-10yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP2-4.5,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP2-4.5,Medium (3-10yr),0.0014999999664723873
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP2-4.5,Long (10+yr),0.00044922890816754494
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP2-4.5,Long (10+yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP2-4.5,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP2-4.5,Long (10+yr),0.0007499999832361937
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP3-7.0,Short (0-3yr),0.00038251791849625466
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP3-7.0,Short (0-3yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP3-7.0,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP3-7.0,Short (0-3yr),0.00024999999441206456
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP3-7.0,Medium (3-10yr),0.000591734694437103
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP3-7.0,Medium (3-10yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP3-7.0,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP3-7.0,Medium (3-10yr),0.0012499999720603228
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Extreme Precip.,SSP3-7.0,Long (10+yr),0.0007997654770951157
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Extreme Precip.,SSP3-7.0,Long (10+yr),0.0
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Extreme Precip.,SSP3-7.0,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Extreme Precip.,SSP3-7.0,Long (10+yr),0.002499999944120646
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP1-1.9,Short (0-3yr),0.00989255839036957
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP1-1.9,Short (0-3yr),4.677730861891924e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP1-1.9,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP1-1.9,Short (0-3yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP1-1.9,Medium (3-10yr),0.009805714028351783
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP1-1.9,Medium (3-10yr),4.612502057492051e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP1-1.9,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP1-1.9,Medium (3-10yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP1-1.9,Long (10+yr),0.0
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP1-1.9,Long (10+yr),4.522828709868053e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP1-1.9,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP1-1.9,Long (10+yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP2-4.5,Short (0-3yr),0.01004959633833471
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP2-4.5,Short (0-3yr),4.7971571287711025e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP2-4.5,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP2-4.5,Short (0-3yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP2-4.5,Medium (3-10yr),0.010842112366547921
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP2-4.5,Medium (3-10yr),5.4215059202531964e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP2-4.5,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP2-4.5,Medium (3-10yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP2-4.5,Long (10+yr),0.01186873853735405
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP2-4.5,Long (10+yr),6.272062904905862e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP2-4.5,Long (10+yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP2-4.5,Long (10+yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP3-7.0,Short (0-3yr),0.010852618056156957
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP3-7.0,Short (0-3yr),5.4938733035906594e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP3-7.0,Short (0-3yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP3-7.0,Short (0-3yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP3-7.0,Medium (3-10yr),0.012281518870031033
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP3-7.0,Medium (3-10yr),7.074726441161442e-05
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP3-7.0,Medium (3-10yr),0.0
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP3-7.0,Medium (3-10yr),0.0
+Manila WH,14.5995,120.9842,PHL,120,Logistics,High,Storms,SSP3-7.0,Long (10+yr),
+London HQ,51.5074,-0.1278,GBR,450,Corporate HQ,Critical,Storms,SSP3-7.0,Long (10+yr),
+Singapore DC,1.3521,103.8198,SGP,85,Data Center,Critical,Storms,SSP3-7.0,Long (10+yr),
+Paris Office,48.8566,2.3522,FRA,200,Sales,Medium,Storms,SSP3-7.0,Long (10+yr),

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"C:\\\\Users\\\\engrj\\\\anaconda3\\\\envs\\\\climada_env_3.11\\\\python.exe\" \"c:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\_read_docx.py\" 2>&1 | Where-Object { $_ -notmatch \"Warning|header|gdalvrt\" })",
+      "PowerShell(& \"C:\\\\Users\\\\engrj\\\\anaconda3\\\\envs\\\\climada_env_3.11\\\\python.exe\" \"c:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\_probe_api.py\" 2>&1 | Where-Object { $_ -notmatch \"Warning 3:|header.dxf|gdalvrt\" })",
+      "PowerShell(& \"C:\\\\Users\\\\engrj\\\\anaconda3\\\\envs\\\\climada_env_3.11\\\\python.exe\" \"c:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\_probe_api2.py\" 2>&1 | Where-Object { $_ -notmatch \"Warning 3:|header.dxf|gdalvrt\" })",
+      "PowerShell(python -c \"import docx; print\\('ok'\\)\" 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\engrj\\\\anaconda3\\\\envs\\\\climada_env_3.11\\\\python.exe\" \"c:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\_probe_hazard.py\" 2>&1 | Where-Object { $_ -notmatch \"Warning 3:|header.dxf|gdalvrt\" })",
+      "Read(//c/Users/engrj/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/9b76e5f8-4bdd-4485-b87f-2ec9146cfcd4/2c0f55e2-caaf-47e0-b6fd-eea4c13dba3a/skills/docx/**)",
+      "Bash(extract-text \"C:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\ESRS_E1-2_CLIMADA_Pipeline_Guide.docx\")",
+      "Bash(pandoc \"C:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\ESRS_E1-2_CLIMADA_Pipeline_Guide.docx\" -t markdown)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\ESRS_E1-2_CLIMADA_Pipeline_Guide.docx\" /tmp/guide_unpacked/)",
+      "Bash(pandoc \"C:\\\\Users\\\\engrj\\\\OneDrive\\\\Python\\\\CLIMADA\\\\ESRS_E1-2_CLIMADA_Pipeline_Guide.docx\" -t plain -o /tmp/guide.txt)",
+      "Bash(echo \"exit:$?\")",
+      "Read(//tmp/**)"
+    ]
+  }
+}
