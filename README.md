@@ -26,7 +26,8 @@
 ### Situation
 
 European companies with global operations must now disclose how physical climate hazards —
-floods, storms, extreme rainfall — threaten their assets. This is mandated by **ESRS E1-2**
+floods, storms, extreme rainfall, wildfires, landslides, heat stress, drought, and
+sea-level rise — threaten their assets. This is mandated by **ESRS E1-2**
 (European Sustainability Reporting Standard, Environment Topic 1, Disclosure 2), part of the
 EU Corporate Sustainability Reporting Directive (CSRD).
 
@@ -47,11 +48,12 @@ scenario-based, probabilistic analysis backed by a credible methodology.
 Produce an **Expected Annual Loss (EAL)** — expressed as a fraction of asset value — for
 every company site, under every combination of:
 
-- **3 hazards**: River Flooding, Extreme Precipitation, Tropical Storms
+- **8 hazards**: River Flooding, Extreme Precipitation, Tropical Storms, Wildfires,
+  Landslides, Heat Stress / Heatwaves, Drought & Water Stress, Sea-Level Rise
 - **3 climate scenarios**: Low-emission future, Mid-emission future, High-emission future
 - **3 time horizons**: Near-term (0–3 yr), Medium-term (3–10 yr), Long-term (10+ yr)
 
-That is **27 combinations per site**. The result must be audit-ready: traceable back to
+That is **72 combinations per site**. The result must be audit-ready: traceable back to
 peer-reviewed methodology, open data, and documented assumptions.
 
 ---
@@ -83,7 +85,7 @@ into the sustainability report.
 
 | Output file | Contents |
 |---|---|
-| `e1_2_climada_results.csv` | Raw results: one row per site × hazard × scenario × timeframe (108 rows for 4 sites) |
+| `e1_2_climada_results.csv` | Raw results: one row per site × hazard × scenario × timeframe (288 rows for 4 sites) |
 | `e1_2_disclosure_table.xlsx` | Three audit-facing sheets: EAL pivot by site+hazard, site-level summary, scenario summary |
 
 The EAL values are dimensionless fractions of asset value (e.g., `0.001250` = 0.125% annual
@@ -118,8 +120,13 @@ Files are cached locally after the first download at:
 ```
 ~/climada/data/
   hazard/
-    river_flood/        ← flood + extreme precip tiles
-    tropical_cyclone/   ← storm track event sets
+    river_flood/          ← flood + extreme precip tiles
+    tropical_cyclone/     ← storm track event sets
+    wildfire/             ← wildfire event sets (where available)
+    landslide/            ← landslide susceptibility sets (where available)
+    heat_stress/          ← ISIMIP heat-stress exceedance sets (where available)
+    relative_cropyield/   ← drought proxy (rainfed wheat yield loss)
+    coastal_flood/        ← SLR / coastal inundation maps (where available)
 ```
 
 Subsequent runs skip the download and load directly from the local cache.
@@ -190,8 +197,8 @@ averaging across all possible events in a year.
 flowchart TD
     A["🏭 INPUT: sites DataFrame\n(lat/lon, country_iso3, value)"]
     B["Cell 4 · Exposures\nConvert sites → CLIMADA Exposures object\nAdds geometry (WGS84 point)"]
-    C["Cell 6 · Run Matrix\nDefine 27 combinations:\n3 hazards × 3 SSPs × 3 timeframes"]
-    D["Cell 8 · Impact Functions\nRF: Depth-damage curve\nTC: Emanuel (2011) wind-damage"]
+    C["Cell 6 · Run Matrix\nDefine 72 combinations:\n8 hazards × 3 SSPs × 3 timeframes"]
+    D["Cell 8 · Impact Functions\nRF/CF: Depth-damage curve\nTC: Emanuel (2011) wind-damage\nWF/LS/HS/RC: Generic curves"]
     E["Cell 5 · Hazard Loader\nFor each country:\nQuery CLIMADA API → download .hdf5"]
     F{"Cache hit?"}
     G["Return cached Hazard"]
@@ -200,7 +207,7 @@ flowchart TD
     J["Cell 6 (purge) · Pre-run Cleanup\nPurge stale Download DB entries\nClear in-memory cache"]
     K["Cell 7 · ImpactCalc Engine\nImpactCalc(exp, impf_set, hazard).impact()\nassign_centroids=True"]
     L["Extract EAL per site\nimp.eai_exp[i]"]
-    M["Collect all_results list\n108 rows for 4 sites × 27 runs"]
+    M["Collect all_results list\n288 rows for 4 sites × 72 runs"]
     N["📄 e1_2_climada_results.csv\nRaw long-format results"]
     O["Cell 8 · Disclosure Table\npivot_table + groupby summaries"]
     P["📊 e1_2_disclosure_table.xlsx\n3 sheets: EAL pivot, Site summary,\nScenario summary"]
@@ -231,13 +238,14 @@ flowchart TD
 
 1. You provide site locations (latitude/longitude/country).
 2. The notebook converts them into a CLIMADA `Exposures` object (adds GPS geometry).
-3. A 27-combination run matrix is defined (3 hazards × 3 scenarios × 3 timeframes).
-4. Vulnerability curves (impact functions) are built for flood and storm hazards.
+3. A 72-combination run matrix is defined (8 hazards × 3 scenarios × 3 timeframes).
+4. Vulnerability curves (impact functions) are built for all 8 hazard types.
 5. Before the main loop, stale download locks are cleared from the cache database.
-6. For each of the 27 combinations, hazard data is fetched per country (or reused from
-   cache), merged into a single event set, then fed to `ImpactCalc`.
+6. For each of the 72 combinations, hazard data is fetched per country (or reused from
+   cache), merged into a single event set, then fed to `ImpactCalc`. Combinations where
+   the CLIMADA API has no data return `NaN` and are logged.
 7. `ImpactCalc` produces the EAL per site. Results accumulate in `all_results`.
-8. After all 27 runs, a pivot table and two summary tables are written to Excel.
+8. After all 72 runs, a pivot table and two summary tables are written to Excel.
 
 ---
 
@@ -262,7 +270,7 @@ Data lineage answers: **"Where did each number come from, and what touched it on
 │  sites DataFrame                                                            │
 │    site_name, latitude, longitude, country_iso3,                           │
 │    value (default 1.0), headcount, business_area, criticality,             │
-│    impf_RF, impf_TC                                                        │
+│    impf_RF, impf_TC, impf_WF, impf_LS, impf_HS, impf_RC, impf_CF          │
 └───────────────────────────────────────┬─────────────────────────────────────┘
                                         │ Exposures(sites)
                                         ▼
@@ -272,9 +280,10 @@ Data lineage answers: **"Where did each number come from, and what touched it on
                    ┌────────────────────┼──────────────────────┐
                    │                    │                       │
                    ▼                    ▼                       ▼
-            impf_sets['RF']      Hazard object           impf_sets['TC']
-            (depth-damage)       (merged per-country     (Emanuel wind-damage)
-                   │              event set)                    │
+         impf_sets[tag]         Hazard object          impf_sets[tag]
+         (RF/WF/LS/HS/         (merged per-country    (TC/RC/CF curves)
+          RC/CF curves)         event set)
+                   │                    │                       │
                    └────────────────────┼──────────────────────┘
                                         │ ImpactCalc(exp, impf_set, hazard).impact()
                                         ▼
@@ -284,7 +293,7 @@ Data lineage answers: **"Where did each number come from, and what touched it on
                                         ▼
                             all_results  (list of dicts)
                             One entry per site × hazard × scenario × timeframe
-                            = 4 sites × 27 combinations = 108 rows
+                            = 4 sites × 72 combinations = 288 rows
                                         │
                           ┌─────────────┴──────────────┐
                           ▼                            ▼
@@ -371,7 +380,7 @@ It is your `sites` table with an extra `geometry` column added automatically by 
 
 ---
 
-### Cell 5 · Define the 27-Run Matrix (`scenarios` + `hazard_config`)
+### Cell 5 · Define the 72-Run Matrix (`scenarios` + `hazard_config`)
 
 ```python
 scenarios = {
@@ -384,7 +393,7 @@ COUNTRIES = sites['country_iso3'].unique().tolist()
 ```
 
 **What this does:** Defines the full matrix of what will be computed. Think of it as the
-"menu" — 27 dishes, each a unique combination of hazard + scenario + timeframe.
+"menu" — 72 dishes, each a unique combination of hazard + scenario + timeframe.
 
 #### `scenarios` dictionary
 
@@ -402,12 +411,13 @@ Maps ESRS-standard scenario names (SSP labels) to the RCP codes used by the CLIM
 
 #### `hazard_config` dictionary
 
-Each key (`'Flooding'`, `'Extreme Precip.'`, `'Storms'`) maps to a sub-dictionary with:
+Each key (`'Flooding'`, `'Extreme Precip.'`, `'Storms'`, `'Wildfires'`, `'Landslides'`,
+`'Heat Stress'`, `'Drought & Water Stress'`, `'Sea-Level Rise'`) maps to a sub-dictionary with:
 
 | Key | Type | Purpose |
 |---|---|---|
-| `haz_type` | string | CLIMADA API hazard type identifier (`'river_flood'` or `'tropical_cyclone'`) |
-| `tag` | string | Short code matching the impact function (`'RF'` or `'TC'`) |
+| `haz_type` | string | CLIMADA API hazard type identifier (e.g., `'river_flood'`, `'wildfire'`, `'relative_cropyield'`) |
+| `tag` | string | Short code matching the impact function (e.g., `'RF'`, `'TC'`, `'WF'`, `'LS'`, `'HS'`, `'RC'`, `'CF'`) |
 | `impf_col` | string | Column in `sites` DataFrame that links each site to its vulnerability curve ID |
 | `time_prop` | string | API property name for the time dimension (`'year_range'` or `'ref_year'`) |
 | `timeframes` | dict | Maps ESRS horizon label → API time value |
@@ -419,12 +429,17 @@ The two hazard types express time differently in the API:
 
 | Hazard | Time property | Values | Meaning |
 |---|---|---|---|
-| River flood | `year_range` | `'2010_2030'`, `'2030_2050'`, `'2050_2070'` | A 20-year window average |
+| River flood, Wildfire, Landslide, Heat Stress, Drought, Sea-Level Rise | `year_range` | `'2010_2030'`, `'2030_2050'`, `'2050_2070'` | A 20-year window average |
 | Tropical cyclone | `ref_year` | `'2040'`, `'2060'`, `'2080'` | A snapshot at that year |
 
 > **Analogy:** The flood data is like a 20-year average temperature — it smooths out
 > year-to-year noise. The cyclone data is like a photograph taken at a specific year —
 > it captures conditions at that exact point in time.
+
+> **Drought extra properties:** The drought hazard uses `haz_type='relative_cropyield'`
+> with `extra_props={'crop_type': 'whe', 'irrigation_type': 'rf'}`. This selects
+> the rainfed wheat yield-loss dataset — the best available CLIMADA open-API proxy for
+> drought and water-stress impacts on supply chains.
 
 #### `COUNTRIES`
 
@@ -450,10 +465,20 @@ No code. Introduces impact functions.
 ```python
 impf_tc = ImpfTropCyclone.from_emanuel_usa()
 impf_rf = ImpactFunc(id=1, haz_type='RF', ...)
-impf_sets = {'RF': ImpactFuncSet([impf_rf]), 'TC': ImpactFuncSet([impf_tc])}
+impf_wf = ImpactFunc(id=1, haz_type='WF', ...)
+impf_ls = ImpactFunc(id=1, haz_type='LS', ...)
+impf_hs = ImpactFunc(id=1, haz_type='HS', ...)
+impf_rc = ImpactFunc(id=1, haz_type='RC', ...)
+impf_cf = ImpactFunc(id=1, haz_type='CF', ...)
+impf_sets = {
+    'RF': ImpactFuncSet([impf_rf]), 'TC': ImpactFuncSet([impf_tc]),
+    'WF': ImpactFuncSet([impf_wf]), 'LS': ImpactFuncSet([impf_ls]),
+    'HS': ImpactFuncSet([impf_hs]), 'RC': ImpactFuncSet([impf_rc]),
+    'CF': ImpactFuncSet([impf_cf]),
+}
 ```
 
-**What this does:** Defines how damage grows with hazard intensity.
+**What this does:** Defines how damage grows with hazard intensity for all 8 hazard types.
 
 > **Analogy:** Think of a car crash test. Engineers have tables that say "at 30 km/h,
 > damage is 10%; at 60 km/h, damage is 40%; at 100 km/h, damage is 90%." Impact functions
@@ -473,7 +498,7 @@ between 0 and 1.
 | Damage at 0 m/s | 0 |
 | Damage at ~70 m/s | ~1.0 (total loss) |
 
-#### River Flood Function — `ImpactFunc(...)`
+#### River Flood Function — `ImpactFunc(haz_type='RF', ...)`
 
 A **JRC-style depth-damage curve** mapping flood water depth (metres) to damage fraction.
 
@@ -488,22 +513,70 @@ A **JRC-style depth-damage curve** mapping flood water depth (metres) to damage 
 | 5.0 | 0.85 | — |
 | 10.0 | 1.00 | Fully submerged — total loss |
 
+#### Wildfire Function — `ImpactFunc(haz_type='WF', ...)`
+
+Maps **Fire Weather Index (FWI) category** (0 = no fire weather, 5 = extreme) to damage fraction.
+
+| FWI category | Damage fraction | Meaning |
+|---|---|---|
+| 0 | 0.00 | No fire weather |
+| 1 | 0.05 | Low — minor scorching risk |
+| 2 | 0.15 | Moderate |
+| 3 | 0.35 | High |
+| 4 | 0.65 | Very high |
+| 5 | 1.00 | Extreme — near-total loss |
+
+#### Landslide Function — `ImpactFunc(haz_type='LS', ...)`
+
+Maps **susceptibility index** (0–1) to damage fraction. A site rated 0.75 on global
+landslide-susceptibility maps has a 60% expected damage degree per event.
+
+#### Heat Stress Function — `ImpactFunc(haz_type='HS', ...)`
+
+Maps **annual exceedance days above the WBGT threshold** to an **operational disruption
+fraction**. This captures labour productivity loss and outdoor-asset downtime, not direct
+structural damage.
+
+| Exceedance days/yr | Disruption fraction |
+|---|---|
+| 0 | 0.00 |
+| 5 | 0.02 |
+| 10 | 0.05 |
+| 20 | 0.12 |
+| 30 | 0.25 |
+| 50 | 0.50 |
+| 100 | 0.80 |
+
+> For indoor-only assets, reduce `paa` (percentage of assets affected) to reflect that
+> temperature-controlled buildings are largely unaffected.
+
+#### Drought / Water Stress Function — `ImpactFunc(haz_type='RC', ...)`
+
+Maps **fractional crop-yield loss** (0 = no loss, 1 = total loss) to a supply-chain and
+water-availability disruption fraction. Rainfed wheat yield loss is the CLIMADA proxy for
+regional drought severity.
+
+#### Sea-Level Rise / Coastal Flood Function — `ImpactFunc(haz_type='CF', ...)`
+
+Uses the same JRC-style depth-damage curve as river flood, applied to **coastal inundation
+depth (metres)** combining SLR and storm-surge scenarios.
+
 **`ImpactFunc` parameters explained:**
 
 | Parameter | Description |
 |---|---|
-| `id` | Integer identifier. Must match the `impf_RF` column in `sites`. |
-| `haz_type` | Must be `'RF'` — matches the river_flood API tag. Note: NOT `'FL'`. |
+| `id` | Integer identifier. Must match the `impf_{TAG}` column in `sites`. |
+| `haz_type` | Must match the tag returned by the CLIMADA API (e.g., `'RF'`, `'TC'`, `'WF'`). |
 | `name` | Human-readable label (not used in calculations). |
-| `intensity` | Array of hazard intensity values (flood depth in metres). |
+| `intensity` | Array of hazard intensity values. |
 | `mdd` | **Mean Damage Degree** — fraction of asset value damaged (0–1). |
-| `paa` | **Percentage of Assets Affected** — what fraction of assets at the site are exposed. Set to 1 (all assets) here. |
+| `paa` | **Percentage of Assets Affected** — fraction of assets at the site exposed to the hazard. |
 | `intensity_unit` | Unit label for the intensity axis. |
 
 #### `impf_sets` dictionary
 
 Groups impact functions by their hazard tag. `ImpactCalc` selects the right set per run
-using `cfg['tag']` (`'RF'` or `'TC'`).
+using `cfg['tag']` (one of `'RF'`, `'TC'`, `'WF'`, `'LS'`, `'HS'`, `'RC'`, `'CF'`).
 
 ---
 
@@ -606,7 +679,7 @@ so the `ImpactCalc` engine can find the nearest event for any site, regardless o
 
 ### Cell 11 · Markdown (Section 6 header — markdown only)
 
-No code. Explains the 27-run engine.
+No code. Explains the 72-run engine.
 
 ---
 
@@ -621,7 +694,7 @@ for _d in list(Download.select()):
         _d.delete_instance()
 ```
 
-**What this does:** Before starting the 27-run loop, clears any stale entries from the
+**What this does:** Before starting the 72-run loop, clears any stale entries from the
 CLIMADA download-tracking SQLite database.
 
 > **Analogy:** Before checking books out of a library, you return any items that were
@@ -653,7 +726,7 @@ of whether a file exists.
 
 ---
 
-### Cell 12 (449f82bc) · The 27-Run Engine (main loop)
+### Cell 12 (449f82bc) · The 72-Run Engine (main loop)
 
 ```python
 for haz_name, cfg in hazard_config.items():
@@ -666,7 +739,7 @@ for haz_name, cfg in hazard_config.items():
                 eal_by_site[name] = float(imp.eai_exp[i])
 ```
 
-**What this does:** The core of the notebook. Iterates all 27 combinations and computes
+**What this does:** The core of the notebook. Iterates all 72 combinations and computes
 EAL for each site.
 
 #### `ImpactCalc(exp, impf_sets[cfg['tag']], hazard)`
@@ -705,24 +778,24 @@ the **Expected Annual Loss** for that site, expressed as a fraction of `value`.
 
 #### `all_results` list
 
-After each of the 27 runs, one dictionary is appended per site. This is the "ledger" that
+After each of the 72 runs, one dictionary is appended per site. This is the "ledger" that
 accumulates every result before being converted to a DataFrame.
 
 #### Progress indicator
 
 ```
-[ 1/27] Flooding | SSP1-1.9 | Short (0-3yr)
+[ 1/72] Flooding | SSP1-1.9 | Short (0-3yr)
 ```
 
-Shows which of the 27 combinations is running. If a country has no data for a combination,
+Shows which of the 72 combinations is running. If a country has no data for a combination,
 a note is printed:
 
 ```
     - no tropical_cyclone for GBR (rcp85, 2080): NoResult
 ```
 
-This is expected for some combinations (e.g., rcp85+2080 TC data does not exist in the
-CLIMADA API at time of writing).
+This is expected for some combinations (e.g., rcp85+2080 TC data, or new hazard types
+where the CLIMADA API has no dataset for a given country/scenario).
 
 ---
 
@@ -789,8 +862,13 @@ have defaults or can be omitted if not yet known.
 | `headcount` | int | No | `120` | Number of employees at the site. Used in the E1-2 sensitivity narrative (AR 6(b)). Not used in risk math. |
 | `business_area` | string | No | `'Logistics'` | Business function of the site. Enrichment only. |
 | `criticality` | string | No | `'High'` | Operational criticality level. Enrichment only. |
-| `impf_RF` | int | Yes | `1` | ID of the river-flood impact function to apply. Must match an `id` in `impf_sets['RF']`. |
+| `impf_RF` | int | Yes | `1` | ID of the river-flood impact function. Must match an `id` in `impf_sets['RF']`. |
 | `impf_TC` | int | Yes | `1` | ID of the tropical-cyclone impact function. Must match an `id` in `impf_sets['TC']`. |
+| `impf_WF` | int | Yes | `1` | ID of the wildfire impact function. Must match an `id` in `impf_sets['WF']`. |
+| `impf_LS` | int | Yes | `1` | ID of the landslide impact function. Must match an `id` in `impf_sets['LS']`. |
+| `impf_HS` | int | Yes | `1` | ID of the heat-stress impact function. Must match an `id` in `impf_sets['HS']`. |
+| `impf_RC` | int | Yes | `1` | ID of the drought/water-stress impact function (relative cropyield). Must match an `id` in `impf_sets['RC']`. |
+| `impf_CF` | int | Yes | `1` | ID of the coastal-flood / SLR impact function. Must match an `id` in `impf_sets['CF']`. |
 
 ---
 
@@ -807,7 +885,7 @@ Output of `Exposures(sites)`. Identical to `sites` plus one extra column added b
 
 ### 8.3 `results_df` / `e1_2_climada_results.csv` — Raw Results
 
-108 rows (4 sites × 27 combinations). One row per site per run.
+288 rows (4 sites × 72 combinations). One row per site per run.
 
 | Column | Type | Example | Description |
 |---|---|---|---|
@@ -818,7 +896,7 @@ Output of `Exposures(sites)`. Identical to `sites` plus one extra column added b
 | `headcount` | int | `120` | From input `sites` |
 | `business_area` | string | `'Logistics'` | From input `sites` |
 | `criticality` | string | `'High'` | From input `sites` |
-| `hazard` | string | `'Flooding'` | One of: `'Flooding'`, `'Extreme Precip.'`, `'Storms'` |
+| `hazard` | string | `'Flooding'` | One of: `'Flooding'`, `'Extreme Precip.'`, `'Storms'`, `'Wildfires'`, `'Landslides'`, `'Heat Stress'`, `'Drought & Water Stress'`, `'Sea-Level Rise'` |
 | `scenario` | string | `'SSP1-1.9'` | One of: `'SSP1-1.9'`, `'SSP2-4.5'`, `'SSP3-7.0'` |
 | `timeframe` | string | `'Short (0-3yr)'` | One of: `'Short (0-3yr)'`, `'Medium (3-10yr)'`, `'Long (10+yr)'` |
 | `eal` | float or NaN | `0.001250` | Expected Annual Loss as a fraction of `value`. `NaN` = no API data for this combination. |
@@ -850,7 +928,7 @@ One row per site, sorted by `total_eal` descending (most exposed first).
 | Column | Description |
 |---|---|
 | `site_name` | Site identifier (index) |
-| `total_eal` | Sum of EAL across all 27 combinations. Higher = more exposed overall. |
+| `total_eal` | Sum of EAL across all 72 combinations. Higher = more exposed overall. |
 | `peak_hazard_eal` | Maximum single-combination EAL. Identifies the worst-case hazard+scenario+timeframe. |
 | `headcount` | Number of employees (from input). |
 | `criticality` | Operational criticality (from input). |
@@ -891,6 +969,15 @@ One row per scenario+timeframe combination (9 rows). Shows portfolio-wide risk t
 | **haz_type** | Hazard Type | CLIMADA's internal code for a hazard family: `'river_flood'`, `'tropical_cyclone'`, etc. |
 | **RF** | River Flood | Short tag used in CLIMADA for river-flood and extreme-precipitation hazard functions and exposure columns. |
 | **TC** | Tropical Cyclone | Short tag used in CLIMADA for tropical cyclone hazard functions and exposure columns. |
+| **WF** | Wildfire | CLIMADA haz_type tag for wildfire event sets (FIRMS-based). |
+| **LS** | Landslide | CLIMADA haz_type tag for landslide susceptibility/frequency datasets. |
+| **HS** | Heat Stress | CLIMADA haz_type tag for ISIMIP heat-stress exceedance datasets. |
+| **RC** | Relative Cropyield | CLIMADA haz_type tag for the ISIMIP relative crop-yield loss dataset — used here as a proxy for drought and water-stress risk. |
+| **CF** | Coastal Flood | CLIMADA haz_type tag for coastal inundation / sea-level rise datasets. |
+| **FWI** | Fire Weather Index | A composite index (0–5) combining temperature, humidity, wind speed, and fuel moisture to estimate wildfire risk. Used as the intensity metric for the wildfire impact function. |
+| **WBGT** | Wet-Bulb Globe Temperature | A heat-stress index combining temperature and humidity. The CLIMADA heat-stress datasets count annual exceedance days above a WBGT threshold. |
+| **FIRMS** | Fire Information for Resource Management System | NASA's near-real-time wildfire detection system using MODIS and VIIRS satellite data. Underpins the CLIMADA wildfire event sets. |
+| **WaterGAP** | Water Global Assessment and Prognosis | A global hydrological model used for quantitative water-stress assessments (not included in this notebook; cited as an alternative for drought analysis). |
 | **Centroid** | — | The centre point of a hazard grid cell. `assign_centroids=True` snaps each site to the nearest centroid so the correct hazard intensity is used. |
 | **IBTrACS** | International Best Track Archive for Climate Stewardship | The global historical tropical cyclone database used to calibrate CLIMADA's synthetic storm tracks. |
 | **ISIMIP** | Inter-Sectoral Impact Model Intercomparison Project | The scientific project that produced the global river-flood hazard maps used in the CLIMADA API. |
@@ -958,7 +1045,32 @@ EAL (currency) = EAL (fraction) × replacement_cost
 
 Example: EAL = 0.00125 × $500,000 replacement cost = $625/year expected annual loss.
 
-### 6. Centroid Distance Warning
+### 6. New Hazard API Coverage is Limited
+
+Wildfire, landslide, heat stress, drought, and sea-level rise datasets in the CLIMADA open
+API have narrower country/scenario coverage than river flood and tropical cyclone. A `NaN`
+result for these hazards means no open-access probabilistic event set exists for that
+country+scenario combination — it is **not** the same as zero risk. Supplement with:
+
+- **Wildfires / Landslides:** National hazard maps, INFORM Risk Index, or JRC global datasets.
+- **Heat Stress:** Local meteorological records or IPCC AR6 regional heat projections.
+- **Drought / Water Stress:** WaterGAP or PCR-GLOBWB water-balance models.
+- **Sea-Level Rise:** IPCC AR6 sea-level projections + national coastal flood maps.
+
+### 7. Drought Proxy Limitation
+
+Drought risk is proxied via ISIMIP relative crop-yield loss (rainfed wheat). This captures
+supply-chain and water-availability risk *indirectly* — it is not a direct measure of water
+scarcity at the site. The haz_type tag in CLIMADA is `RC` (not `DR`). Verify that the
+exposure column is `impf_RC` and the impact function uses `haz_type='RC'`.
+
+### 8. Heat Stress Is an Operational, Not Structural, Metric
+
+The heat-stress impact function maps exceedance days to **operational disruption fraction**
+(labour productivity / outdoor downtime). It does not represent structural damage to
+buildings. For indoor climate-controlled facilities, reduce `paa` in `impf_hs` accordingly.
+
+### 9. Centroid Distance Warning
 
 The CLIMADA log may print:
 
@@ -976,7 +1088,7 @@ this warning and consider whether the grid resolution is adequate.
 
 | Paragraph | Requirement | Satisfied by |
 |---|---|---|
-| §14 | Classify risks as physical or transition | `hazard` column — all three are physical risks |
+| §14 | Classify risks as physical or transition | `hazard` column — all eight are physical risks |
 | §15(a) | Methodology for exposure assessment | CLIMADA (ETH Zurich, peer-reviewed, EIOPA-adopted) + this notebook |
 | §15(b) | Transition risk events and trends | **Out of scope** — CLIMADA is physical-risk only |
 | §16(a)(i) | At least one high-emission scenario | **SSP3-7.0** (`rcp85`) |
