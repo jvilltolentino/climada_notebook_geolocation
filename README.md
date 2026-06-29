@@ -131,6 +131,29 @@ Files are cached locally after the first download at:
 
 Subsequent runs skip the download and load directly from the local cache.
 
+### Hazard Data API Sources
+
+All hazard event sets are downloaded from the **CLIMADA Data API** (ETH Zurich). The table
+below shows which external dataset backs each hazard, the publishing organisation, and the
+URL you can visit to learn more or verify data provenance for audit purposes.
+
+| Hazard | CLIMADA `haz_type` | CLIMADA API status | Underlying dataset / alternative source | URL |
+|---|---|---|---|---|
+| Flooding | `river_flood` | ✅ Fully supported | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
+| Extreme Precipitation | `river_flood` | ✅ Fully supported (same as Flooding) | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
+| Storms | `tropical_cyclone` | ✅ Fully supported | IBTrACS tracks + CLIMADA synthetic model (CMIP6) | https://www.ncei.noaa.gov/products/international-best-track-archive |
+| Wildfires | `wildfire` | ⚠️ Historical only — no `climate_scenario`/`year_range` | FIRMS MODIS/VIIRS historical catalog; for projections use ISIMIP3b fire data | https://data.isimip.org/ |
+| Landslides | `landslide` | ❌ Not registered in API (`ValueError`) | `climada_petals` Landslide class (NASA COOLR) or UNDRR ThinkHazard | https://thinkhazard.org/ |
+| Heat Stress / Heatwaves | `heat_stress` | ❌ Not registered in API (`ValueError`) | ISIMIP3b WBGT NetCDF or Copernicus CDS heat-stress indicators | https://data.isimip.org/ |
+| Drought & Water Stress | `relative_cropyield` | ⚠️ Global dataset — no per-country tiles (`NoResult` with country filter) | ISIMIP rainfed-wheat yield-loss; fixed with `country_independent=True` | https://www.isimip.org/ |
+| Sea-Level Rise | `coastal_flood` | ❌ Not registered in API (`ValueError`) | IPCC AR6 SLR tool or `climada_petals` CoastSeg or WRI AQUEDUCT Coastal | https://sealevel.nasa.gov/ipcc-ar6-sea-level-projection-tool |
+
+**Status legend:** ✅ = data flows automatically · ⚠️ = type exists but query needs adjustment · ❌ = type not in CLIMADA ETH API schema
+
+> **CLIMADA API:** Metadata at `https://climada.ethz.ch/api/` · Files served from
+> `https://data.iac.ethz.ch/climada/` · Called automatically by `Client().get_hazard()`
+> for ✅ and ⚠️ hazards. ❌ hazards need an external data source wired in manually.
+
 ### Input You Must Supply
 
 The only thing you need to change is the `sites` DataFrame in **Cell 4**:
@@ -254,13 +277,22 @@ flowchart TD
 Data lineage answers: **"Where did each number come from, and what touched it on the way?"**
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  EXTERNAL SOURCES                                                           │
-│                                                                             │
-│  ETH Zurich CLIMADA Data API (data.iac.ethz.ch)                            │
-│    ├── GloFAS/ISIMIP river-flood depth maps  →  river_flood_*.hdf5         │
-│    └── IBTrACS synthetic TC tracks (CMIP6-scaled)  →  tropical_cyclone_*.hdf5 │
-└───────────────────────────────────────┬─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  EXTERNAL SOURCES  (all files served via CLIMADA Data API: data.iac.ethz.ch)    │
+│                                                                                  │
+│  haz_type               Underlying dataset              Scientific source        │
+│  ─────────────────────  ──────────────────────────────  ──────────────────────  │
+│  river_flood            GloFAS/ISIMIP flood depth maps  isimip.org              │
+│  tropical_cyclone       IBTrACS + CLIMADA synth. tracks ncei.noaa.gov           │
+│  wildfire               FIRMS MODIS/VIIRS fire events   firms.modaps.eosdis.gov │
+│  landslide              NASA COOLR global catalogue     gpm.nasa.gov/landslides  │
+│  heat_stress            ISIMIP WBGT exceedance sets     isimip.org              │
+│  relative_cropyield     ISIMIP rainfed wheat yield loss isimip.org              │
+│  coastal_flood          ISIMIP coastal flood/SLR maps   isimip.org              │
+│                                                                                  │
+│  Metadata API:  https://climada.ethz.ch/api/                                    │
+│  File server:   https://data.iac.ethz.ch/climada/                               │
+└───────────────────────────────────────┬──────────────────────────────────────────┘
                                         │ downloaded by Client.get_hazard()
                                         │ cached in ~/climada/data/
                                         ▼
@@ -309,6 +341,31 @@ Data lineage answers: **"Where did each number come from, and what touched it on
                                        e1_2_disclosure_table.xlsx
                                        (3 sheets, audit-ready)
 ```
+
+### Hazard API Source Reference
+
+Every hazard file is fetched through the single CLIMADA Python client
+(`Client().get_hazard(haz_type, properties=...)`). The table below maps each hazard to its
+CLIMADA API type, the underlying scientific dataset, the organisation that publishes it, and
+the primary URL.
+
+| Hazard (notebook name) | CLIMADA `haz_type` | API status | Underlying dataset / alternative | Primary URL |
+|---|---|---|---|---|
+| Flooding | `river_flood` | ✅ Supported | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
+| Extreme Precipitation | `river_flood` | ✅ Supported (same as Flooding) | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
+| Storms | `tropical_cyclone` | ✅ Supported | IBTrACS tracks + CLIMADA synthetic model (CMIP6) | https://www.ncei.noaa.gov/products/international-best-track-archive |
+| Wildfires | `wildfire` | ⚠️ Historical only — `climate_scenario`/`year_range` not supported | FIRMS MODIS/VIIRS catalog (historical); for projections: ISIMIP3b fire data | https://data.isimip.org/ |
+| Landslides | `landslide` | ❌ Not registered in API (`ValueError`) | `climada_petals` Landslide + NASA COOLR; or UNDRR ThinkHazard | https://thinkhazard.org/ |
+| Heat Stress / Heatwaves | `heat_stress` | ❌ Not registered in API (`ValueError`) | ISIMIP3b WBGT exceedance-day NetCDF; or Copernicus CDS | https://data.isimip.org/ |
+| Drought & Water Stress | `relative_cropyield` | ⚠️ Global dataset — per-country filter returns `NoResult`; fixed with `country_independent=True` | ISIMIP rainfed-wheat yield-loss (LPJmL) | https://www.isimip.org/ |
+| Sea-Level Rise | `coastal_flood` | ❌ Not registered in API (`ValueError`) | IPCC AR6 SLR tool; or `climada_petals` CoastSeg; or WRI AQUEDUCT Coastal | https://sealevel.nasa.gov/ipcc-ar6-sea-level-projection-tool |
+
+**CLIMADA Data API endpoints:**
+
+| Endpoint | URL | Purpose |
+|---|---|---|
+| Metadata API | `https://climada.ethz.ch/api/` | Browse and filter available hazard datasets by `haz_type`, country, scenario, year |
+| File server | `https://data.iac.ethz.ch/climada/` | Actual `.hdf5` file downloads (called automatically by `Client.get_hazard()`) |
 
 ---
 
@@ -1045,30 +1102,38 @@ EAL (currency) = EAL (fraction) × replacement_cost
 
 Example: EAL = 0.00125 × $500,000 replacement cost = $625/year expected annual loss.
 
-### 6. New Hazard API Coverage is Limited
+### 6. Root Causes for New Hazard NaN Results
 
-Wildfire, landslide, heat stress, drought, and sea-level rise datasets in the CLIMADA open
-API have narrower country/scenario coverage than river flood and tropical cyclone. A `NaN`
-result for these hazards means no open-access probabilistic event set exists for that
-country+scenario combination — it is **not** the same as zero risk. Supplement with:
+The five new hazards return `NaN` for specific, diagnosable reasons — not because the data
+doesn't exist, but because of mismatches between the query and what the CLIMADA ETH API
+actually serves:
 
-- **Wildfires / Landslides:** National hazard maps, INFORM Risk Index, or JRC global datasets.
-- **Heat Stress:** Local meteorological records or IPCC AR6 regional heat projections.
-- **Drought / Water Stress:** WaterGAP or PCR-GLOBWB water-balance models.
-- **Sea-Level Rise:** IPCC AR6 sea-level projections + national coastal flood maps.
+| Hazard | Error | Root cause | Fix |
+|---|---|---|---|
+| Wildfires | `NoResult` | CLIMADA API `wildfire` type has no `climate_scenario`/`year_range` dimension — it is a historical FIRMS catalog | Set `time_prop=None`; query per-country without scenario/year |
+| Landslides | `ValueError` | `'landslide'` is **not a registered `haz_type`** in the CLIMADA ETH API schema — rejected before any HTTP call | Use `api_unavailable=True`; use `climada_petals` Landslide or UNDRR ThinkHazard |
+| Heat Stress | `ValueError` | `'heat_stress'` is **not a registered `haz_type`** in the CLIMADA ETH API schema | Use `api_unavailable=True`; use ISIMIP3b WBGT data or Copernicus CDS |
+| Drought | `NoResult` | `relative_cropyield` is a **global gridded dataset** — no per-country tiles; `country_iso3alpha` filter returns nothing | Set `country_independent=True`; single global download |
+| Sea-Level Rise | `ValueError` | `'coastal_flood'` is **not a registered `haz_type`** in the CLIMADA ETH API schema | Use `api_unavailable=True`; use IPCC AR6 SLR tool or `climada_petals` CoastSeg |
+
+The distinction between `ValueError` (type unknown to schema) and `NoResult` (type known
+but no matching dataset) is important: `ValueError` types cannot be fixed by changing query
+parameters — an entirely different data source is required.
 
 ### 7. Drought Proxy Limitation
 
 Drought risk is proxied via ISIMIP relative crop-yield loss (rainfed wheat). This captures
 supply-chain and water-availability risk *indirectly* — it is not a direct measure of water
-scarcity at the site. The haz_type tag in CLIMADA is `RC` (not `DR`). Verify that the
-exposure column is `impf_RC` and the impact function uses `haz_type='RC'`.
+scarcity at the site. The haz_type tag in CLIMADA is `RC` (not `DR`). The exposure column
+must be `impf_RC` and the impact function must use `haz_type='RC'`. If SSP2-4.5 (`rcp60`)
+still returns `NoResult` after the `country_independent` fix, check available scenario
+labels with `Client().list_datasets('relative_cropyield')`.
 
 ### 8. Heat Stress Is an Operational, Not Structural, Metric
 
-The heat-stress impact function maps exceedance days to **operational disruption fraction**
-(labour productivity / outdoor downtime). It does not represent structural damage to
-buildings. For indoor climate-controlled facilities, reduce `paa` in `impf_hs` accordingly.
+The heat-stress impact function maps WBGT exceedance days to **operational disruption
+fraction** (labour productivity / outdoor downtime). It does not represent structural damage
+to buildings. For indoor climate-controlled facilities, reduce `paa` in `impf_hs`.
 
 ### 9. Centroid Distance Warning
 
