@@ -83,10 +83,12 @@ into the sustainability report.
 
 ### Result
 
-| Output file | Contents |
+| Output location | Contents |
 |---|---|
-| `e1_2_climada_results.csv` | Raw results: one row per site × hazard × scenario × timeframe (288 rows for 4 sites) |
+| `simulations/<date>_SIM_NUM_<n>/e1_2_climada_results.csv` | Raw results: one row per site × hazard × scenario × timeframe (e.g. 288 rows for 4 sites × 72 runs) |
 | `e1_2_disclosure_table.xlsx` | Three audit-facing sheets: EAL pivot by site+hazard, site-level summary, scenario summary |
+
+Each execution of §6 creates a new timestamped subfolder under `simulations/` so previous runs are never overwritten.
 
 The EAL values are dimensionless fractions of asset value (e.g., `0.001250` = 0.125% annual
 damage). Multiply by actual asset replacement cost to convert to a currency figure.
@@ -100,33 +102,52 @@ damage). Multiply by actual asset replacement cost to convert to a currency figu
 | Requirement | Version | Notes |
 |---|---|---|
 | Python | 3.11 | Via conda environment `climada_env_3.11` |
-| CLIMADA | 6.1.0 | `pip install climada` or `conda install climada` |
+| CLIMADA | 6.1.0 | Core risk engine |
+| climada_petals | 6.2.0+ | Required for `CoastalFlood.from_aqueduct_tif()` (§5b sea-level rise) |
+| xarray | any recent | Required for §5b landslide NetCDF reading |
+| requests | any recent | Required for §5b Open-Meteo and Zenodo downloads |
 | pandas | any recent | Included with CLIMADA deps |
 | numpy | any recent | Included with CLIMADA deps |
 | openpyxl | any recent | Required for `.xlsx` output |
 
-> **CLIMADA Petals is NOT required.** This notebook uses only the core `climada` package.
-> European windstorm (extratropical) risk would need `climada_petals` (`StormEurope`), but
-> that is out of scope here.
+> **`climada_petals` is required** for the §5b coastal-flood prep step, which uses
+> `CoastalFlood.from_aqueduct_tif()` to download WRI Aqueduct GeoTIFs. If petals is not
+> installed in your kernel, §5b will skip the coastal-flood section and print a message;
+> the §6 run loop will record `NaN` for Sea-Level Rise until the HDF5 files are available.
+> European extratropical windstorm risk would also need `climada_petals` (`StormEurope`)
+> — that is not covered here.
 
 ### Internet Access
 
-The notebook downloads hazard files from the **CLIMADA Data API** hosted at ETH Zurich
-(`data.iac.ethz.ch`). Files range from ~5 MB (small country, tropical cyclone) to
-~130 MB (large country, tropical cyclone). A stable connection is recommended.
+The notebook uses **two classes of data sources** that require internet access:
 
-Files are cached locally after the first download at:
+**Source 1 — CLIMADA Data API** (ETH Zurich, `data.iac.ethz.ch`) — used for flooding, storms, and wildfire. Files range from ~5 MB (small country, tropical cyclone) to ~130 MB (large country, tropical cyclone).
+
+**Source 2 — Supplementary open APIs** — used by the §5b prep cell for hazards not available in the CLIMADA API:
+
+| Source | Used for | Size | Requires key? |
+|---|---|---|---|
+| Open-Meteo Climate API (`climate-api.open-meteo.com`) | Heat stress + drought projections | ~200 KB per site | No |
+| Open-Meteo ERA5 Archive (`archive-api.open-meteo.com`) | Precipitation baseline (1980–2009) | ~200 KB per site | No |
+| Zenodo record 6893230 (Felsberg et al. 2022 LSS) | Landslide susceptibility raster | 458 KB total | No |
+| WRI Aqueduct S3 (`wri-projects.s3.amazonaws.com`) | Coastal flood / SLR GeoTIFs (via petals) | ~46 MB per scenario×year | No |
+
+All sources are **free and open-access** with no API key required.
+
+Files are cached locally after the first download:
 
 ```
 ~/climada/data/
-  hazard/
-    river_flood/          ← flood + extreme precip tiles
-    tropical_cyclone/     ← storm track event sets
-    wildfire/             ← wildfire event sets (where available)
-    landslide/            ← landslide susceptibility sets (where available)
-    heat_stress/          ← ISIMIP heat-stress exceedance sets (where available)
-    relative_cropyield/   ← drought proxy (rainfed wheat yield loss)
-    coastal_flood/        ← SLR / coastal inundation maps (where available)
+  hazard/                      ← CLIMADA system dir; per-hazard subfolders
+    river_flood/               ← flood + extreme precip tiles (CLIMADA API)
+    tropical_cyclone/          ← storm track event sets (CLIMADA API)
+    wildfire/                  ← FIRMS fire-season events (CLIMADA API)
+    landslide/                 ← Felsberg 2022 LSS raster + landslide_hist.hdf5 (§5b)
+    heat_stress/               ← heat_stress_{rcp}_{yr}.hdf5 (§5b, Open-Meteo)
+    relative_cropyield/        ← precip baseline CSV + relative_cropyield_{rcp}_{yr}.hdf5 (§5b)
+    coastal_flood/             ← coastal_flood_{rcp}_{yr}.hdf5 (§5b, Aqueduct)
+  CoastalFlood/
+    Aqueduct/                  ← raw WRI Aqueduct GeoTIFs cached by climada_petals (~46 MB each)
 ```
 
 Subsequent runs skip the download and load directly from the local cache.
@@ -137,22 +158,24 @@ All hazard event sets are downloaded from the **CLIMADA Data API** (ETH Zurich).
 below shows which external dataset backs each hazard, the publishing organisation, and the
 URL you can visit to learn more or verify data provenance for audit purposes.
 
-| Hazard | CLIMADA `haz_type` | CLIMADA API status | Underlying dataset / alternative source | URL |
+| Hazard | CLIMADA `haz_type` | CLIMADA API status | Data source (actual) | Alt. source |
 |---|---|---|---|---|
-| Flooding | `river_flood` | ✅ Fully supported | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
-| Extreme Precipitation | `river_flood` | ✅ Fully supported (same as Flooding) | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
-| Storms | `tropical_cyclone` | ✅ Fully supported | IBTrACS tracks + CLIMADA synthetic model (CMIP6) | https://www.ncei.noaa.gov/products/international-best-track-archive |
-| Wildfires | `wildfire` | ⚠️ Historical only — no `climate_scenario`/`year_range` | FIRMS MODIS/VIIRS historical catalog; for projections use ISIMIP3b fire data | https://data.isimip.org/ |
-| Landslides | `landslide` | ❌ Not registered in API (`ValueError`) | `climada_petals` Landslide class (NASA COOLR) or UNDRR ThinkHazard | https://thinkhazard.org/ |
-| Heat Stress / Heatwaves | `heat_stress` | ❌ Not registered in API (`ValueError`) | ISIMIP3b WBGT NetCDF or Copernicus CDS heat-stress indicators | https://data.isimip.org/ |
-| Drought & Water Stress | `relative_cropyield` | ⚠️ Global dataset — no per-country tiles (`NoResult` with country filter) | ISIMIP rainfed-wheat yield-loss; fixed with `country_independent=True` | https://www.isimip.org/ |
-| Sea-Level Rise | `coastal_flood` | ❌ Not registered in API (`ValueError`) | IPCC AR6 SLR tool or `climada_petals` CoastSeg or WRI AQUEDUCT Coastal | https://sealevel.nasa.gov/ipcc-ar6-sea-level-projection-tool |
+| Flooding | `river_flood` | ✅ Fully supported | GloFAS / ISIMIP river-flood depth maps (CLIMADA API) | — |
+| Extreme Precipitation | `river_flood` | ✅ Fully supported (same as Flooding) | GloFAS / ISIMIP river-flood depth maps (CLIMADA API) | — |
+| Storms | `tropical_cyclone` | ✅ Fully supported | IBTrACS + CLIMADA synthetic tracks (CMIP6, `model_name='random_walk'`) | — |
+| Wildfires | `wildfire` | ⚠️ Historical only — API tag `WFseason` normalised to `WF` in `load_hazard` | FIRMS MODIS/VIIRS historical catalog (CLIMADA API, `time_prop=None`) | ISIMIP3b fire projections |
+| Landslides | `landslide` | ❌ Not in schema (`ValueError`) | **§5b:** Felsberg et al. 2022 ensemble-mean LSS (Zenodo 6893230, 458 KB) | climada_petals + NASA COOLR |
+| Heat Stress / Heatwaves | `heat_stress` | ❌ Not in schema (`ValueError`) | **§5b:** Open-Meteo Climate API — annual days Tmax > 35 °C (CMIP6 MRI_AGCM3_2_S) | ISIMIP3b WBGT |
+| Drought & Water Stress | `relative_cropyield` | ⚠️ Global only — `NoResult` per-country; `country_independent=True`; §5b fallback | CLIMADA API (global, first); **§5b fallback:** Open-Meteo precip deficit (proj/baseline) | petals Drought (SPEI) |
+| Sea-Level Rise | `coastal_flood` | ❌ Not in schema (`ValueError`) | **§5b:** petals `CoastalFlood.from_aqueduct_tif()` — WRI Aqueduct coastal GeoTIFs | IPCC AR6 SLR tool |
 
-**Status legend:** ✅ = data flows automatically · ⚠️ = type exists but query needs adjustment · ❌ = type not in CLIMADA ETH API schema
+**Status legend:** ✅ = data flows automatically from CLIMADA API · ⚠️ = type exists but needs query adjustment or local fallback · ❌ = type not in CLIMADA ETH API schema (§5b prep required)
 
 > **CLIMADA API:** Metadata at `https://climada.ethz.ch/api/` · Files served from
 > `https://data.iac.ethz.ch/climada/` · Called automatically by `Client().get_hazard()`
-> for ✅ and ⚠️ hazards. ❌ hazards need an external data source wired in manually.
+> for ✅ and ⚠️ hazards.  
+> **§5b prep cell** must be run once before §6 to populate local HDF5 files for
+> landslide, heat stress, drought (fallback), and sea-level rise.
 
 ### Input You Must Supply
 
@@ -180,12 +203,24 @@ conda activate climada_env_3.11
 # 2. Launch Jupyter
 jupyter notebook load_exposure.ipynb
 
-# 3. Run all cells in order:
-#    Kernel → Restart & Run All
+# 3. Run cells §1–§5a in order (imports, exposure, hazard config, impact functions, loader)
+
+# 4. Run the §5b PREP CELL once to download supplementary data:
+#    - Landslide susceptibility raster (Zenodo, 458 KB)
+#    - Heat stress per scenario × timeframe (Open-Meteo Climate API)
+#    - Drought baseline + projections (Open-Meteo Archive + Climate API)
+#    - Coastal flood / SLR GeoTIFs (WRI Aqueduct via climada_petals, ~46 MB each)
+#    Safe to re-run — existing HDF5 files are skipped.
+
+# 5. Run §6 (72-combination engine) and §7 (disclosure table)
 ```
 
-**First run:** Expect 30–90 minutes due to hazard file downloads (especially tropical
-cyclone files which can be 100+ MB each). Subsequent runs use the local cache and complete
+**First run — §5b:** Allow 20–45 minutes for the Open-Meteo queries (per-site × 9
+scenario×timeframe combinations) and up to 45 minutes for Aqueduct GeoTIF downloads
+(~46 MB per unique scenario×year, 5–7 unique files). Subsequent §5b runs skip cached files.
+
+**First run — §6:** Expect 30–90 minutes for CLIMADA API hazard downloads (tropical cyclone
+tiles can be 100+ MB each). Subsequent §6 runs load from the local CLIMADA cache and complete
 in ~5 minutes.
 
 ---
@@ -219,27 +254,32 @@ averaging across all possible events in a year.
 ```mermaid
 flowchart TD
     A["🏭 INPUT: sites DataFrame\n(lat/lon, country_iso3, value)"]
-    B["Cell 4 · Exposures\nConvert sites → CLIMADA Exposures object\nAdds geometry (WGS84 point)"]
-    C["Cell 6 · Run Matrix\nDefine 72 combinations:\n8 hazards × 3 SSPs × 3 timeframes"]
-    D["Cell 8 · Impact Functions\nRF/CF: Depth-damage curve\nTC: Emanuel (2011) wind-damage\nWF/LS/HS/RC: Generic curves"]
-    E["Cell 5 · Hazard Loader\nFor each country:\nQuery CLIMADA API → download .hdf5"]
-    F{"Cache hit?"}
+    B["§2 · Exposures\nConvert sites → CLIMADA Exposures object\nAdds geometry (WGS84 point)"]
+    C["§5 · hazard_config + scenarios\nDefine 72 combinations:\n8 hazards × 3 SSPs × 3 timeframes"]
+    D["§4 · Impact Functions\nRF/CF: Depth-damage curve\nTC: Emanuel (2011) wind-damage\nWF/LS/HS/RC: Generic curves"]
+    PREP["§5b · Supplementary Prep Cell\nRun ONCE before §6"]
+    LS["Zenodo 6893230\nFelsberg 2022 LSS (458 KB)\n→ landslide_hist.hdf5"]
+    HS["Open-Meteo Climate API\nTmax > 35°C days/yr\n→ heat_stress_{rcp}_{yr}.hdf5"]
+    RC["Open-Meteo Archive + Climate\nPrecip deficit proxy\n→ relative_cropyield_{rcp}_{yr}.hdf5"]
+    CF["petals CoastalFlood\nWRI Aqueduct GeoTIFs (~46 MB ea.)\n→ coastal_flood_{rcp}_{yr}.hdf5"]
+    E["§5 · load_hazard()\nMode 1: per-country CLIMADA API\nMode 2: global CLIMADA API\nMode 3: local HDF5 (api_unavailable)"]
+    F{"Cache hit?\n(in-memory dict)"}
     G["Return cached Hazard"]
-    H["Download from ETH Zurich\nStore in ~/climada/data/"]
-    I["Merge per-country tiles\nHazard.concat()"]
-    J["Cell 6 (purge) · Pre-run Cleanup\nPurge stale Download DB entries\nClear in-memory cache"]
-    K["Cell 7 · ImpactCalc Engine\nImpactCalc(exp, impf_set, hazard).impact()\nassign_centroids=True"]
-    L["Extract EAL per site\nimp.eai_exp[i]"]
-    M["Collect all_results list\n288 rows for 4 sites × 72 runs"]
-    N["📄 e1_2_climada_results.csv\nRaw long-format results"]
-    O["Cell 8 · Disclosure Table\npivot_table + groupby summaries"]
+    H["CLIMADA API (ETH Zurich)\nriver_flood / tropical_cyclone / wildfire\nStore in ~/climada/data/"]
+    I["Merge per-country tiles\nHazard.concat() + _normalize_tag()"]
+    K["§6 · ImpactCalc Engine (72 runs)\nImpactCalc(exp, impf_set, hazard).impact()\nassign_centroids=True"]
+    L["Extract EAL per site\nimp.eai_exp[i]  (NaN if no data)"]
+    M["Collect all_results list\ne.g. 288 rows for 4 sites × 72 runs"]
+    N["📄 simulations/&lt;date&gt;_SIM_NUM_&lt;n&gt;/\ne1_2_climada_results.csv"]
+    O["§7 · Disclosure Table\npivot_table + groupby summaries"]
     P["📊 e1_2_disclosure_table.xlsx\n3 sheets: EAL pivot, Site summary,\nScenario summary"]
 
     A --> B
     B --> C
     C --> D
-    D --> J
-    J --> K
+    D --> PREP
+    PREP --> LS & HS & RC & CF
+    PREP --> K
     C --> E
     E --> F
     F -- Yes --> G
@@ -247,6 +287,7 @@ flowchart TD
     H --> I
     G --> I
     I --> K
+    LS & HS & RC & CF --> E
     K --> L
     L --> M
     M --> N
@@ -263,12 +304,18 @@ flowchart TD
 2. The notebook converts them into a CLIMADA `Exposures` object (adds GPS geometry).
 3. A 72-combination run matrix is defined (8 hazards × 3 scenarios × 3 timeframes).
 4. Vulnerability curves (impact functions) are built for all 8 hazard types.
-5. Before the main loop, stale download locks are cleared from the cache database.
-6. For each of the 72 combinations, hazard data is fetched per country (or reused from
-   cache), merged into a single event set, then fed to `ImpactCalc`. Combinations where
-   the CLIMADA API has no data return `NaN` and are logged.
+5. **§5b prep cell** (run once before §6): downloads supplementary data for the four
+   hazards not served by the CLIMADA ETH API, saving one HDF5 per scenario × timeframe
+   per hazard under `~/climada/data/hazard/<haz_type>/`. Skips existing files.
+6. For each of the 72 combinations, `load_hazard` selects the right mode automatically:
+   - *Per-country*: calls `Client().get_hazard()` for each country, merges tiles
+   - *Global dataset*: single API call without country filter (drought)
+   - *API unavailable*: reads local HDF5 built by §5b (landslide, heat stress, SLR)
+   Results are cached in memory; the `WFseason` → `WF` tag normalisation is applied silently.
+   Combinations with no data record `NaN` and are logged.
 7. `ImpactCalc` produces the EAL per site. Results accumulate in `all_results`.
-8. After all 72 runs, a pivot table and two summary tables are written to Excel.
+8. After all 72 runs, results are written to a new timestamped subfolder under `simulations/`.
+9. A pivot table and two summary tables are written to `e1_2_disclosure_table.xlsx`.
 
 ---
 
@@ -277,25 +324,28 @@ flowchart TD
 Data lineage answers: **"Where did each number come from, and what touched it on the way?"**
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  EXTERNAL SOURCES  (all files served via CLIMADA Data API: data.iac.ethz.ch)    │
-│                                                                                  │
-│  haz_type               Underlying dataset              Scientific source        │
-│  ─────────────────────  ──────────────────────────────  ──────────────────────  │
-│  river_flood            GloFAS/ISIMIP flood depth maps  isimip.org              │
-│  tropical_cyclone       IBTrACS + CLIMADA synth. tracks ncei.noaa.gov           │
-│  wildfire               FIRMS MODIS/VIIRS fire events   firms.modaps.eosdis.gov │
-│  landslide              NASA COOLR global catalogue     gpm.nasa.gov/landslides  │
-│  heat_stress            ISIMIP WBGT exceedance sets     isimip.org              │
-│  relative_cropyield     ISIMIP rainfed wheat yield loss isimip.org              │
-│  coastal_flood          ISIMIP coastal flood/SLR maps   isimip.org              │
-│                                                                                  │
-│  Metadata API:  https://climada.ethz.ch/api/                                    │
-│  File server:   https://data.iac.ethz.ch/climada/                               │
-└───────────────────────────────────────┬──────────────────────────────────────────┘
-                                        │ downloaded by Client.get_hazard()
-                                        │ cached in ~/climada/data/
-                                        ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  EXTERNAL SOURCES                                                                                        │
+│                                                                                                          │
+│  haz_type             Source                              Provider / fetch path                         │
+│  ─────────────────    ─────────────────────────────────   ──────────────────────────────────────────    │
+│  river_flood          GloFAS/ISIMIP flood depth maps      CLIMADA API → data.iac.ethz.ch               │
+│  tropical_cyclone     IBTrACS + CLIMADA synth. tracks     CLIMADA API → data.iac.ethz.ch               │
+│  wildfire             FIRMS MODIS/VIIRS fire events       CLIMADA API → data.iac.ethz.ch               │
+│  landslide ★          Felsberg et al. 2022 LSS ensemble   Zenodo 6893230 (458 KB, §5b)                 │
+│  heat_stress ★        CMIP6 Tmax via Open-Meteo           climate-api.open-meteo.com (§5b)             │
+│  relative_cropyield   ISIMIP rainfed wheat yield loss     CLIMADA API (global); §5b precip fallback    │
+│  coastal_flood ★      WRI Aqueduct coastal GeoTIFs        S3 via climada_petals CoastalFlood (§5b)     │
+│                                                                                                          │
+│  ★ = not in CLIMADA ETH API schema; §5b prep cell creates the local HDF5 files                         │
+│                                                                                                          │
+│  CLIMADA API metadata:  https://climada.ethz.ch/api/                                                    │
+│  CLIMADA file server:   https://data.iac.ethz.ch/climada/                                               │
+└──────────────────────────────────────────────────────────────┬───────────────────────────────────────────┘
+                                                               │ CLIMADA API → Client.get_hazard()
+                                                               │ §5b sources → Hazard.write_hdf5()
+                                                               │ cached in ~/climada/data/hazard/<haz_type>/
+                                                               ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  NOTEBOOK INPUTS (you provide)                                              │
 │                                                                             │
@@ -344,28 +394,23 @@ Data lineage answers: **"Where did each number come from, and what touched it on
 
 ### Hazard API Source Reference
 
-Every hazard file is fetched through the single CLIMADA Python client
-(`Client().get_hazard(haz_type, properties=...)`). The table below maps each hazard to its
-CLIMADA API type, the underlying scientific dataset, the organisation that publishes it, and
-the primary URL.
-
-| Hazard (notebook name) | CLIMADA `haz_type` | API status | Underlying dataset / alternative | Primary URL |
+| Hazard | CLIMADA `haz_type` | API status | Data source (actual) | Higher-fidelity alt. |
 |---|---|---|---|---|
-| Flooding | `river_flood` | ✅ Supported | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
-| Extreme Precipitation | `river_flood` | ✅ Supported (same as Flooding) | GloFAS / ISIMIP river-flood depth maps | https://www.isimip.org/ |
-| Storms | `tropical_cyclone` | ✅ Supported | IBTrACS tracks + CLIMADA synthetic model (CMIP6) | https://www.ncei.noaa.gov/products/international-best-track-archive |
-| Wildfires | `wildfire` | ⚠️ Historical only — `climate_scenario`/`year_range` not supported | FIRMS MODIS/VIIRS catalog (historical); for projections: ISIMIP3b fire data | https://data.isimip.org/ |
-| Landslides | `landslide` | ❌ Not registered in API (`ValueError`) | `climada_petals` Landslide + NASA COOLR; or UNDRR ThinkHazard | https://thinkhazard.org/ |
-| Heat Stress / Heatwaves | `heat_stress` | ❌ Not registered in API (`ValueError`) | ISIMIP3b WBGT exceedance-day NetCDF; or Copernicus CDS | https://data.isimip.org/ |
-| Drought & Water Stress | `relative_cropyield` | ⚠️ Global dataset — per-country filter returns `NoResult`; fixed with `country_independent=True` | ISIMIP rainfed-wheat yield-loss (LPJmL) | https://www.isimip.org/ |
-| Sea-Level Rise | `coastal_flood` | ❌ Not registered in API (`ValueError`) | IPCC AR6 SLR tool; or `climada_petals` CoastSeg; or WRI AQUEDUCT Coastal | https://sealevel.nasa.gov/ipcc-ar6-sea-level-projection-tool |
+| Flooding | `river_flood` | ✅ Supported | GloFAS / ISIMIP depth maps (CLIMADA API) | — |
+| Extreme Precipitation | `river_flood` | ✅ Supported (same tile) | GloFAS / ISIMIP depth maps (CLIMADA API) | — |
+| Storms | `tropical_cyclone` | ✅ Supported | IBTrACS + CLIMADA synth. tracks (CMIP6) | — |
+| Wildfires | `wildfire` | ⚠️ Historical — tag `WFseason` normalised to `WF` | FIRMS MODIS/VIIRS catalog; same baseline for all 9 cells | ISIMIP3b fire projections |
+| Landslides | `landslide` | ❌ Not in schema | **§5b:** Felsberg et al. 2022 LSS (Zenodo 6893230) | NASA COOLR + petals Landslide |
+| Heat Stress | `heat_stress` | ❌ Not in schema | **§5b:** Open-Meteo Climate API, annual Tmax > 35 °C days | ISIMIP3b WBGT |
+| Drought | `relative_cropyield` | ⚠️ Global — `country_independent=True`; §5b fallback | CLIMADA API (global); **§5b fallback:** Open-Meteo precip deficit | petals Drought (SPEI) |
+| Sea-Level Rise | `coastal_flood` | ❌ Not in schema | **§5b:** petals `CoastalFlood.from_aqueduct_tif()` (WRI Aqueduct) | IPCC AR6 SLR tool |
 
 **CLIMADA Data API endpoints:**
 
 | Endpoint | URL | Purpose |
 |---|---|---|
-| Metadata API | `https://climada.ethz.ch/api/` | Browse and filter available hazard datasets by `haz_type`, country, scenario, year |
-| File server | `https://data.iac.ethz.ch/climada/` | Actual `.hdf5` file downloads (called automatically by `Client.get_hazard()`) |
+| Metadata API | `https://climada.ethz.ch/api/` | Browse available datasets by `haz_type`, country, scenario, year |
+| File server | `https://data.iac.ethz.ch/climada/` | `.hdf5` downloads (called by `Client.get_hazard()`) |
 
 ---
 
@@ -637,9 +682,10 @@ using `cfg['tag']` (one of `'RF'`, `'TC'`, `'WF'`, `'LS'`, `'HS'`, `'RC'`, `'CF'
 
 ---
 
-### Cell 9 · Markdown (Section 5 header — markdown only)
+### Cell 9 · Markdown (§5 header — markdown only)
 
-No code. Explains caching and graceful gap handling.
+No code. Explains the three `load_hazard` modes (per-country, global, API-unavailable)
+and the two robustness features (graceful gaps + in-memory caching).
 
 ---
 
@@ -648,99 +694,126 @@ No code. Explains caching and graceful gap handling.
 ```python
 import time
 from climada.util.api_client import Download
+from climada.util.constants import SYSTEM_DIR as _CLIMADA_SYSTEM_DIR
 
 client = Client()
 _hazard_cache = {}
+_LOCAL_HAZ_BASE = Path(_CLIMADA_SYSTEM_DIR) / 'hazard'
 
 def load_hazard(cfg, rcp_code, time_value): ...
 ```
 
-**What this does:** Defines the function that downloads (or retrieves from cache) one
-merged hazard event set covering all countries in `COUNTRIES`.
+**What this does:** Defines the function that returns one merged `Hazard` object for a
+given configuration, RCP scenario, and time value. It operates in three modes:
 
-#### `client = Client()`
+| Mode | Flag in `hazard_config` | Used for | Behaviour |
+|---|---|---|---|
+| **Per-country** | *(default)* | `river_flood`, `tropical_cyclone`, `wildfire` | One API call per country in `COUNTRIES`; tiles merged with `Hazard.concat()` |
+| **Global dataset** | `country_independent=True` | `relative_cropyield` | One API call without `country_iso3alpha`; falls back to §5b local HDF5 if `NoResult` |
+| **API unavailable** | `api_unavailable=True` | `landslide`, `heat_stress`, `coastal_flood` | Reads local HDF5 created by §5b; returns `None` if file absent |
 
-Creates a CLIMADA API client instance. This is the object that communicates with
-`data.iac.ethz.ch` to list and download datasets.
+#### `_LOCAL_HAZ_BASE`
+
+Points to `~/climada/data/hazard/`. The §5b files are stored in per-hazard subfolders here
+(e.g., `~/climada/data/hazard/heat_stress/`). `load_hazard` resolves the file path as:
+
+```
+{haz_type}_{rcp_code}_{time_value}.hdf5   (when time_prop is not None)
+{haz_type}_hist.hdf5                       (when time_prop is None — e.g. landslide)
+```
+
+#### `_normalize_tag(haz)`
+
+Called on every `Hazard` returned from the API before it is cached. If the API's internal
+`haz.haz_type` differs from `cfg['tag']`, it is silently corrected. This handles the
+wildfire case where the API returns `haz_type='WFseason'` but the exposure and impact
+function use `'WF'`. Without normalisation, `ImpactCalc` would raise `AttributeError`
+because it cannot find the `impf_WFseason` column in the exposure table.
 
 #### `_hazard_cache = {}`
 
-A Python dictionary that stores previously fetched `Hazard` objects in memory. If the same
-`(haz_type, rcp_code, time_value)` combination is requested again, it is returned
-immediately without a network call.
+A Python dictionary storing `(haz_type, rcp_code, time_value)` → `Hazard`. If the same
+triplet is requested again, the cached object is returned immediately — no network call.
 
-> **Why is this important?** `Flooding` and `Extreme Precip.` both use `river_flood` data.
-> Without caching, the same large files would be downloaded twice per scenario-timeframe pair.
+> **Why is this important?** `Flooding` and `Extreme Precip.` share `river_flood` data.
+> Without caching, each of the 9 scenario×timeframe combinations would re-download the
+> same files twice. For `time_prop=None` hazards (wildfire, landslide), the cache key
+> collapses `rcp_code` and `time_value` to `None`, so all 9 cells reuse one fetch.
 
-#### `load_hazard(cfg, rcp_code, time_value)` — function signature
-
-| Parameter | Type | Description |
-|---|---|---|
-| `cfg` | dict | One entry from `hazard_config` (e.g., the `'Storms'` sub-dict) |
-| `rcp_code` | string | RCP scenario string from `scenarios` (e.g., `'rcp26'`) |
-| `time_value` | string | API time value (e.g., `'2010_2030'` or `'2040'`) |
-
-**Returns:** A merged `Hazard` object covering all countries, or `None` if no data exists.
-
-#### Inside the function — `props` dictionary
-
-```python
-props = {
-    'country_iso3alpha': iso3,
-    'climate_scenario': rcp_code,
-    cfg['time_prop']: time_value,
-    **cfg['extra_props'],
-}
-```
-
-This is the query sent to the CLIMADA API. Each key is a metadata filter:
-
-| API Property | Example Value | Purpose |
-|---|---|---|
-| `country_iso3alpha` | `'PHL'` | Selects the per-country hazard tile |
-| `climate_scenario` | `'rcp26'` | Filters to the chosen emissions pathway |
-| `year_range` | `'2010_2030'` | (Flood only) Selects the 20-year window |
-| `ref_year` | `'2040'` | (TC only) Selects the reference year snapshot |
-| `model_name` | `'random_walk'` | (TC only) Selects the synthetic-track dataset |
-
-#### Retry logic
-
-```python
-for attempt in range(2):
-    try:
-        parts.append(client.get_hazard(...))
-        break
-    except Exception as exc:
-        exc_name = type(exc).__name__
-        if exc_name in ('ChunkedEncodingError', 'Failed') and attempt == 0:
-            # purge stale DB entries, sleep 5s, retry once
-        else:
-            print(f"    - no {cfg['haz_type']} for {iso3} ...")
-            break
-```
+#### Retry logic (per-country and global modes)
 
 | Exception | Cause | Action |
 |---|---|---|
-| `ChunkedEncodingError` | Network connection dropped mid-download | Purge stale DB lock, sleep 5 s, retry once |
-| `Failed` | A previous download was interrupted, leaving a stale cache DB entry | Same — purge and retry |
-| `NoResult` | No dataset exists in the API for this combination (e.g., rcp85 + 2080 for TC) | Log and skip; EAL recorded as NaN |
+| `ChunkedEncodingError` | Network dropped mid-download | Purge stale DB lock, sleep 5 s, retry once |
+| `Failed` | Prior interrupted download left a stale DB entry | Same — purge and retry |
+| `NoResult` | No dataset for this combination (e.g., TC rcp85+2080) | Log and skip; EAL recorded as NaN |
 | Any other | Unexpected error | Log and skip |
 
 #### `Hazard.concat(parts)`
 
-Merges individual per-country `Hazard` objects into a single combined event set that covers
-all sites. Each country tile has its own geographic footprint; concatenation combines them
-so the `ImpactCalc` engine can find the nearest event for any site, regardless of country.
+Merges per-country `Hazard` objects into a single event set covering all sites, so
+`ImpactCalc` can find the nearest hazard centroid for any site regardless of country.
 
 ---
 
-### Cell 11 · Markdown (Section 6 header — markdown only)
+### Cell 11 · §5b Supplementary Hazard Prep (code cell — run once before §6)
 
-No code. Explains the 72-run engine.
+**What this does:** Downloads and packages hazard data for the four hazard types that are
+not served by the CLIMADA ETH API, saving one CLIMADA-format HDF5 file per
+scenario × timeframe into `~/climada/data/hazard/<haz_type>/`.
+
+The cell is **idempotent** — if a file already exists it is skipped immediately. It also
+starts by probing each external API (`HEAD` request) and skips any section whose source
+is unreachable, logging the outcome rather than crashing.
+
+**Landslide susceptibility (Zenodo 6893230)**
+
+Downloads `FelsbergEtAl2022_LSS_ensavg.nc4c` (458 KB) — a global ensemble-mean
+landslide susceptibility index on a 0–1 scale. Extracts the value at each site using
+`xr.Dataset.sel(method='nearest')` and creates a single-event `Hazard('LS')` with
+`intensity = susceptibility index`. Because susceptibility is static (no climate
+projections), the same file `landslide_hist.hdf5` is reused for all 9 cells by
+`load_hazard` when `time_prop=None`.
+
+**Heat stress (Open-Meteo Climate API)**
+
+Queries `climate-api.open-meteo.com` per site per scenario×timeframe for daily
+`temperature_2m_max` (CMIP6 model MRI_AGCM3_2_S). Computes the mean annual count of
+days with Tmax > 35 °C and stores it as `Hazard('HS')` intensity. One HDF5 file per
+`(rcp, yr_key)` combination (9 files total).
+
+**Drought / water stress (Open-Meteo Archive + Climate API)**
+
+Step A: fetches ERA5 daily precipitation 1980–2009 from `archive-api.open-meteo.com`
+per site and computes mean annual baseline (mm/yr). Cached as a CSV for subsequent runs.
+
+Step B: fetches projected precipitation per scenario×timeframe from the Climate API.
+Computes the fractional precipitation deficit: `max(0, 1 – projected/baseline)`,
+naturally on a 0–1 scale matching the existing `impf_RC` impact function. Stored as
+`Hazard('RC')`, used as a fallback when the CLIMADA API returns `NoResult`.
+
+**Sea-Level Rise / Coastal Flood (WRI Aqueduct via `climada_petals`)**
+
+Calls `CoastalFlood.from_aqueduct_tif()` once per country per Aqueduct scenario×year.
+Raw GeoTIFs (~46 MB each) are cached by petals in `~/climada/data/CoastalFlood/Aqueduct/`.
+Results are merged with `Hazard.concat()`, `haz_type` is forced to `'CF'`, and
+`frequency = 0.01` (1-in-100yr return period). Aqueduct RCP mapping:
+
+| Notebook RCP | Aqueduct scenario | Aqueduct target year |
+|---|---|---|
+| `rcp26` | `historical` (conservative lower bound; no RCP2.6 published) | `hist` |
+| `rcp60` | `45` (RCP4.5) | `2030`, `2050`, `2080` |
+| `rcp85` | `85` (RCP8.5) | `2030`, `2050`, `2080` |
 
 ---
 
-### Cell 885fc7ff · Pre-Run Cache Purge
+### Cell 12 · Markdown (§6 header — markdown only)
+
+No code. Explains the 72-run engine and the §5b prerequisite.
+
+---
+
+### Cell 13 · Pre-Run Cache Purge
 
 ```python
 from pathlib import Path
@@ -783,7 +856,7 @@ of whether a file exists.
 
 ---
 
-### Cell 12 (449f82bc) · The 72-Run Engine (main loop)
+### Cell 14 · The 72-Run Engine (main loop)
 
 ```python
 for haz_name, cfg in hazard_config.items():
@@ -844,25 +917,39 @@ accumulates every result before being converted to a DataFrame.
 [ 1/72] Flooding | SSP1-1.9 | Short (0-3yr)
 ```
 
-Shows which of the 72 combinations is running. If a country has no data for a combination,
-a note is printed:
+Shows which of the 72 combinations is running. Notes are printed for any gap:
 
 ```
     - no tropical_cyclone for GBR (rcp85, 2080): NoResult
+    -> §5b prep cell not yet run — alt: Run §5b prep cell (Open-Meteo Climate API) ...
 ```
 
-This is expected for some combinations (e.g., rcp85+2080 TC data, or new hazard types
-where the CLIMADA API has no dataset for a given country/scenario).
+The second message appears when `api_unavailable=True` and the §5b HDF5 file is missing.
+Run §5b first to eliminate these gaps.
+
+#### Output files
+
+Results are written to a new timestamped subfolder each run:
+
+```
+simulations/
+  <YYYYMMDD>_SIM_NUM_1/
+    e1_2_climada_results.csv
+  <YYYYMMDD>_SIM_NUM_2/      ← second run on the same day
+    e1_2_climada_results.csv
+```
+
+The subfolder counter resets daily (it counts only folders with today's date prefix).
 
 ---
 
-### Cell 13 · Markdown (Section 7 header — markdown only)
+### Cell 15 · Markdown (§7 header — markdown only)
 
 No code. Explains the disclosure table structure.
 
 ---
 
-### Cell 14 (cell-15) · Generate the E1-2 Disclosure Table
+### Cell 16 · Generate the E1-2 Disclosure Table
 
 ```python
 pivot = results_df.pivot_table(...)
@@ -894,11 +981,11 @@ climate pathway. Used to answer "does our risk get worse under high-emissions fu
 
 ---
 
-### Cell 15 · ESRS Mapping Table (markdown only)
+### Cell 17 · ESRS Mapping Table (§8, markdown only)
 
 No code. Provides a paragraph-by-paragraph mapping of notebook outputs to the ESRS E1-2
-disclosure requirements (§14, §15, §16, AR6). Use this section when drafting the
-sustainability report narrative.
+disclosure requirements (§14, §15, §16, AR6), and the full list of documented limitations
+for each hazard. Use this section when drafting the sustainability report narrative.
 
 ---
 
@@ -940,9 +1027,10 @@ Output of `Exposures(sites)`. Identical to `sites` plus one extra column added b
 
 ---
 
-### 8.3 `results_df` / `e1_2_climada_results.csv` — Raw Results
+### 8.3 `simulations/<date>_SIM_NUM_<n>/e1_2_climada_results.csv` — Raw Results
 
-288 rows (4 sites × 72 combinations). One row per site per run.
+One row per site per combination. For 4 sites × 72 combinations = 288 rows per run.
+Each §6 execution creates a new timestamped subfolder so previous runs are never overwritten.
 
 | Column | Type | Example | Description |
 |---|---|---|---|
@@ -1102,40 +1190,62 @@ EAL (currency) = EAL (fraction) × replacement_cost
 
 Example: EAL = 0.00125 × $500,000 replacement cost = $625/year expected annual loss.
 
-### 6. Root Causes for New Hazard NaN Results
+### 6. Wildfire — Historical Baseline Only
 
-The five new hazards return `NaN` for specific, diagnosable reasons — not because the data
-doesn't exist, but because of mismatches between the query and what the CLIMADA ETH API
-actually serves:
+The CLIMADA ETH API `wildfire` type is a historical FIRMS fire-season catalog (internal
+`haz_type='WFseason'`). `load_hazard` normalises the tag to `'WF'` automatically so
+`ImpactCalc` matches `impf_WF` without any changes to the exposure or impact-function cells.
+Because there are no scenario or year-range dimensions in the API, the same historical
+fire-frequency baseline is reused for all 9 scenario×timeframe cells (conservative
+assumption). For scenario-projected wildfire intensity, download ISIMIP3b fire data from
+`data.isimip.org` and load as a custom `Hazard`.
 
-| Hazard | Error | Root cause | Fix |
-|---|---|---|---|
-| Wildfires | `NoResult` | CLIMADA API `wildfire` type has no `climate_scenario`/`year_range` dimension — it is a historical FIRMS catalog | Set `time_prop=None`; query per-country without scenario/year |
-| Landslides | `ValueError` | `'landslide'` is **not a registered `haz_type`** in the CLIMADA ETH API schema — rejected before any HTTP call | Use `api_unavailable=True`; use `climada_petals` Landslide or UNDRR ThinkHazard |
-| Heat Stress | `ValueError` | `'heat_stress'` is **not a registered `haz_type`** in the CLIMADA ETH API schema | Use `api_unavailable=True`; use ISIMIP3b WBGT data or Copernicus CDS |
-| Drought | `NoResult` | `relative_cropyield` is a **global gridded dataset** — no per-country tiles; `country_iso3alpha` filter returns nothing | Set `country_independent=True`; single global download |
-| Sea-Level Rise | `ValueError` | `'coastal_flood'` is **not a registered `haz_type`** in the CLIMADA ETH API schema | Use `api_unavailable=True`; use IPCC AR6 SLR tool or `climada_petals` CoastSeg |
+### 7. Landslide — Static Susceptibility Map
 
-The distinction between `ValueError` (type unknown to schema) and `NoResult` (type known
-but no matching dataset) is important: `ValueError` types cannot be fixed by changing query
-parameters — an entirely different data source is required.
+`'landslide'` is not registered in the CLIMADA ETH API schema (`ValueError`). The §5b prep
+cell downloads the Felsberg et al. 2022 ensemble-mean global landslide susceptibility map
+(Zenodo 6893230, 458 KB) — a 0–1 index per pixel. The same file (`landslide_hist.hdf5`)
+is reused for all 9 scenario×timeframe cells because published susceptibility maps do not
+yet have climate-change scaling. If §5b has not been run, all 9 landslide cells record NaN.
 
-### 7. Drought Proxy Limitation
+### 8. Heat Stress — Simplified Tmax Threshold
 
-Drought risk is proxied via ISIMIP relative crop-yield loss (rainfed wheat). This captures
-supply-chain and water-availability risk *indirectly* — it is not a direct measure of water
-scarcity at the site. The haz_type tag in CLIMADA is `RC` (not `DR`). The exposure column
-must be `impf_RC` and the impact function must use `haz_type='RC'`. If SSP2-4.5 (`rcp60`)
-still returns `NoResult` after the `country_independent` fix, check available scenario
-labels with `Client().list_datasets('relative_cropyield')`.
+`'heat_stress'` is not registered in the CLIMADA ETH API schema (`ValueError`). The §5b
+prep cell queries the Open-Meteo Climate API (CMIP6 model MRI_AGCM3_2_S, free, no key)
+for daily Tmax per site and counts annual days above 35 °C as a simplified proxy for WBGT
+heat stress. This metric captures labour-productivity and outdoor-asset downtime rather than
+structural damage. For indoor climate-controlled facilities, reduce `paa` in `impf_hs`. For
+higher-fidelity heat stress, replace with ISIMIP3b WBGT exceedance-day data.
 
-### 8. Heat Stress Is an Operational, Not Structural, Metric
+### 9. Drought — Open-Meteo Precipitation Deficit Proxy
 
-The heat-stress impact function maps WBGT exceedance days to **operational disruption
-fraction** (labour productivity / outdoor downtime). It does not represent structural damage
-to buildings. For indoor climate-controlled facilities, reduce `paa` in `impf_hs`.
+`relative_cropyield` exists in the CLIMADA ETH API but only as a global gridded dataset;
+per-country queries return `NoResult`. With `country_independent=True`, a global download
+is attempted — if that also returns `NoResult`, `load_hazard` falls back to the §5b local
+HDF5 file. The §5b metric is a fractional annual precipitation deficit (projected mm/yr vs.
+1980–2009 ERA5 baseline), clipped to [0, 1], which directly matches the scale of the
+`impf_RC` impact function. This is an indirect drought proxy — it does not directly measure
+water table depth or SPEI. Disclose in the methodology narrative.
 
-### 9. Centroid Distance Warning
+### 10. Sea-Level Rise — WRI Aqueduct Scenario Gaps
+
+`'coastal_flood'` is not registered in the CLIMADA ETH API schema (`ValueError`). The §5b
+prep cell uses `climada_petals.CoastalFlood.from_aqueduct_tif()` to download WRI Aqueduct
+coastal flood GeoTIFs (~46 MB per unique scenario×year, one-time download). Aqueduct does
+not publish RCP2.6 projections; SSP1-1.9 (`rcp26`) uses the historical baseline as a
+conservative lower bound. Disclose this substitution in the audit narrative. For
+higher-precision SLR projections, see the IPCC AR6 tool at `sealevel.nasa.gov`.
+
+### 11. CLIMADA API Error Types — `ValueError` vs `NoResult`
+
+The distinction between these two error types is important for diagnosis:
+
+| Error | Meaning | Fix |
+|---|---|---|
+| `ValueError` | `haz_type` is completely unknown to the CLIMADA ETH API schema — rejected before any HTTP call | Cannot be fixed by changing query parameters; §5b provides an alternative source |
+| `NoResult` | `haz_type` is known but no dataset matches the country/scenario/year filters | Check available combinations with `Client().list_datasets(haz_type)` or use `country_independent=True` |
+
+### 12. Centroid Distance Warning
 
 The CLIMADA log may print:
 
@@ -1144,8 +1254,9 @@ WARNING - Distance to closest centroid is greater than 0.083333 degree
 ```
 
 This means one site is more than ~9 km from the nearest hazard grid point. The assigned
-intensity may be slightly inaccurate. For high-precision work, check which site triggers
-this warning and consider whether the grid resolution is adequate.
+intensity may be slightly inaccurate. For high-precision work, verify which site triggers
+this warning and consider whether the hazard dataset's grid resolution is adequate for
+that location.
 
 ---
 
@@ -1166,4 +1277,5 @@ this warning and consider whether the grid resolution is adequate.
 
 ---
 
-*Generated with CLIMADA 6.1.0 · EFRAG Draft Simplified ESRS V1.5 (Nov 2025)*
+*Generated with CLIMADA 6.1.0 + climada_petals 6.2.0 · EFRAG Draft Simplified ESRS V1.5 (Nov 2025)*  
+*Supplementary sources: Open-Meteo Climate API · WRI Aqueduct Coastal Flood (S3) · Zenodo 6893230 (Felsberg et al. 2022)*
